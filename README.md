@@ -3,9 +3,12 @@
 #### Make the tpcds application
 1) add the jars in lib/ as lib of your project.
 2) run sbt assembly, and get target/scala-2.11/SparkExampleScala-assembly-0.1.jar .
+```bash
+sbt assembly
+```
 
 #### Make the tpcds-kit
-tpcds-kit is needed to generate the dataSet fot tpc-ds benchmark
+tpcds-kit is needed to generate the dataSet for tpc-ds benchmark
 ```bash
 git clone https://github.com/davies/tpcds-kit.git
 yum install gcc gcc-c++ bison flex cmake ncurses-devel
