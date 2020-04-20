@@ -1,0 +1,83 @@
+apiVersion: "sparkoperator.k8s.io/v1beta2"
+kind: SparkApplication
+metadata:
+  name: tpcds-query-runner
+  namespace: default
+spec:
+  type: Scala
+  mode: cluster
+  image: "registry.cn-beijing.aliyuncs.com/liumi/spark:2.4.5-tpcds-1.0.3"
+  imagePullPolicy: IfNotPresent
+  mainClass: com.aliyun.liumi.spark.example.tpcds.TpcdsRunner
+  mainApplicationFile: "local:///opt/spark/jars/SparkExampleScala-assembly-0.1.jar"
+  arguments:
+    # 采用args设置部分参数
+    # 原始数据源的位置
+    - "dfs://f-4b1fcae5dve22.cn-hangzhou.dfs.aliyuncs.com:10290/pod/data/tpc-ds-data"
+    # 结果存放的位置
+    - "oss://liumi-oss/tpc-ds-result"
+    # 查询优化
+    - "true"
+    # 查询迭代次数
+    - "1"
+    # 查询超时时间，单位s
+    - "86400"
+    # 查询类型
+    - "0"
+    # 查询并行度
+    - "8"
+    # 需要跳过的查询，多个可以逗号分开
+    - "q72-v2.4"
+  sparkVersion: "2.4.5"
+  restartPolicy:
+    type: Never
+    onFailureRetries: 2
+    onFailureRetryInterval: 5
+    onSubmissionFailureRetries: 2
+    onSubmissionFailureRetryInterval: 10
+  timeToLiveSeconds: 86400
+  hadoopConf:
+    # HDFS
+    "fs.defaultFS": "dfs://f-4b1fcae5dve22.cn-hangzhou.dfs.aliyuncs.com:10290"
+    "fs.dfs.impl": "com.alibaba.dfs.DistributedFileSystem"
+    "fs.AbstractFileSystem.dfs.impl": "com.alibaba.dfs.DFS"
+    # OSS
+    "fs.oss.impl": "org.apache.hadoop.fs.aliyun.oss.AliyunOSSFileSystem"
+    "fs.oss.endpoint": "oss-cn-hangzhou-internal.aliyuncs.com"
+    "fs.oss.accessKeyId": "AK-ID"
+    "fs.oss.accessKeySecret": "AK-SECRET"
+  sparkConf:
+    "spark.kubernetes.allocation.batch.size": "200"
+
+  driver:
+    cores: 8
+    memory: "14000m"
+    labels:
+      version: 2.4.5
+      spark-app: spark-tpcds
+      role: driver
+    annotations:
+      k8s.aliyun.com/eci-image-cache: "true"
+      k8s.aliyun.com/eci-use-specs: "8-16Gi"
+    envVars:
+      aliyun_logs_project: liumi-k8s-spark
+      aliyun_logs_machinegroup: k8s-group-app-spark
+      aliyun_logs_test-stdout: stdout
+    serviceAccount: spark
+  executor:
+    cores: 8
+    instances: 200
+    memory: "28000m"
+    labels:
+      version: 2.4.5
+      role: executor
+    annotations:
+      k8s.aliyun.com/eci-image-cache: "true"
+      k8s.aliyun.com/eci-use-specs: "8-32Gi"
+    # nodeSelector:
+    #   "kubernetes.io/hostname": "virtual-kubelet"
+    # tolerations:
+    #   - key: "virtual-kubelet.io/provider"
+    #     operator: "Equal"
+    #     value: "alibabacloud"
+    #     effect: "NoSchedule"

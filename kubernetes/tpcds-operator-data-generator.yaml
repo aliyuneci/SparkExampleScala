@@ -1,0 +1,69 @@
+apiVersion: "sparkoperator.k8s.io/v1beta2"
+kind: SparkApplication
+metadata:
+  name: tpcds-data-generator
+  namespace: default
+spec:
+  type: Scala
+  mode: cluster
+  image: "registry.cn-beijing.aliyuncs.com/liumi/spark:2.4.5-tpcds-1.0.1"
+  imagePullPolicy: IfNotPresent
+  mainClass: com.aliyun.liumi.spark.example.tpcds.TpcdsDataGenerator
+  mainApplicationFile: "local:///opt/spark/jars/SparkExampleScala-assembly-0.1.jar"
+  arguments:
+    # 采用args设置部分参数，参数的位置不能变
+    # 生成的数据存储的位置
+    - "dfs://f-4b1fcae5dve22.cn-hangzhou.dfs.aliyuncs.com:10290/pod/data/tpc-ds-data"
+    # dataScaleFactor(单位GB)
+    - "1"
+    # 生成数据的并行度，决定了第一个stage的task数量，不得低于executor的总数
+    - "100"
+  sparkVersion: "2.4.5"
+  restartPolicy:
+    type: OnFailure
+    onFailureRetries: 2
+    onFailureRetryInterval: 5
+    onSubmissionFailureRetries: 2
+    onSubmissionFailureRetryInterval: 10
+  timeToLiveSeconds: 86400
+  hadoopConf:
+    # HDFS
+    "fs.defaultFS": "dfs://f-4b1fcae5dve22.cn-hangzhou.dfs.aliyuncs.com:10290"
+    "fs.dfs.impl": "com.alibaba.dfs.DistributedFileSystem"
+    "fs.AbstractFileSystem.dfs.impl": "com.alibaba.dfs.DFS"
+    # OSS
+    "fs.oss.impl": "org.apache.hadoop.fs.aliyun.oss.AliyunOSSFileSystem"
+    "fs.oss.endpoint": "oss-cn-hangzhou-internal.aliyuncs.com"
+    "fs.oss.accessKeyId": "AK-ID"
+    "fs.oss.accessKeySecret": "AK-SECRET"
+  sparkConf:
+    "spark.kubernetes.allocation.batch.size": "100"
+
+  driver:
+    cores: 2
+    memory: "6800m"
+    labels:
+      version: 2.4.5
+      spark-app: spark-tpcds
+      role: driver
+    annotations:
+      k8s.aliyun.com/eci-image-cache: "true"
+      k8s.aliyun.com/eci-vswitch: "vsw-bp1jrgfqqy54kg5hcf8bc"
+    serviceAccount: spark
+  executor:
+    cores: 4
+    instances: 10
+    memory: "13000m" #给系统预留1G左右的内存，不然executor容器很容易OOM
+    labels:
+      version: 2.4.5
+      role: executor
+    annotations:
+      k8s.aliyun.com/eci-image-cache: "true"
+      k8s.aliyun.com/eci-vswitch: "vsw-bp1jrgfqqy54kg5hcf8bc"
+    # nodeSelector:
+    #   "kubernetes.io/hostname": "virtual-kubelet"
+    # tolerations:
+    #   - key: "virtual-kubelet.io/provider"
+    #     operator: "Equal"
+    #     value: "alibabacloud"
+    #     effect: "NoSchedule"
